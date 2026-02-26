@@ -1,5 +1,65 @@
 # Hull Moving Average (HMA) Indicator for NinjaTrader 8
 
+## Purpose
+
+This is a **test of the mcp-debugger .NET adapter**. The goal is to create a
+real-world NinjaTrader indicator (Hull Moving Average), extract the algorithm
+into a standalone .NET console app, and debug it using the locally installed
+mcp-debugger to verify the debugger works correctly with .NET/C#.
+
+## mcp-debugger (Local Installation)
+
+mcp-debugger is installed locally at:
+```
+C:\Users\Bob\Documents\GitHub\mcp-debugger
+```
+
+It is an MCP server that gives AI agents step-through debugging via the Debug
+Adapter Protocol. This local copy has been customized with a **.NET/C# debug
+adapter** (`packages/adapter-dotnet/`) that uses vsdbg and a custom
+vsdbg-bridge for TCP-to-stdio translation. It supports Python, JavaScript,
+Rust, Go, and .NET/C#.
+
+The mcp-debugger MCP tools are available in this session (e.g.,
+`create_debug_session`, `set_breakpoint`, `start_debugging`, `get_variables`,
+`step_over`, etc.).
+
+## Before Writing Code: Read the Documentation
+
+**IMPORTANT**: Before creating any NinjaScript code, review the scraped
+NinjaTrader documentation in:
+```
+nt8-docs/text/
+```
+
+Key files to read first:
+- `indicator.txt` — Indicator-specific methods and properties
+- `developing_indicators.txt` — Levels 1-6 of indicator development
+- `indicator_overview.txt` — Overview of the indicator framework
+- `ninjascript_wizard.txt` — The wizard NinjaTrader provides for humans to
+  create indicators. **Use the wizard's output structure as your template** —
+  match the same regions, method ordering, property patterns, and naming
+  conventions so your code is consistent with what NinjaTrader generates.
+- `ninjascript_best_practices.txt` — Coding standards
+- `addplot.txt` — How to add chart plots
+- `onbarUpdate.txt` / `onstatechange.txt` — Core lifecycle methods
+
+Review existing built-in indicators in `bin\Custom\Indicators\` (the `@`-prefixed
+files) to see the patterns and conventions used by NinjaTrader's own indicators.
+
+## NinjaTrader 8 Compilation Architecture
+
+NinjaTrader 8 has its own built-in C# compiler. There is **no `.csproj` file**.
+You place `.cs` files in the appropriate subfolder under `bin\Custom\` and
+NinjaTrader compiles **all** NinjaScript files into a single `Custom.dll`
+assembly. Key points:
+
+- Indicators go in `bin\Custom\Indicators\`
+- Strategies go in `bin\Custom\Strategies\`
+- NinjaTrader compiles ALL `.cs` files, not just the one you're editing
+- Compile errors from other files will appear alongside yours
+- No external build tool or project file is needed
+
 ## What Is the Hull Moving Average?
 
 The Hull Moving Average (HMA), developed by Alan Hull in 2005, is a technical
@@ -13,113 +73,89 @@ Given a period **n**:
 
 1. **WMA half** = WMA(Close, n/2)
 2. **WMA full** = WMA(Close, n)
-3. **Delta** = 2 &times; WMA_half &minus; WMA_full
-4. **HMA** = WMA(Delta series, &radic;n)
+3. **Delta** = 2 * WMA_half - WMA_full
+4. **HMA** = WMA(Delta series, sqrt(n))
 
-The "2 &times; half &minus; full" trick amplifies recent price action, and the
-final WMA over &radic;n bars smooths the result without reintroducing lag.
+The "2 * half - full" trick amplifies recent price action, and the final WMA
+over sqrt(n) bars smooths the result without reintroducing lag.
 
-## NinjaTrader 8 Compilation Architecture
+## Task Breakdown
 
-NinjaTrader 8 has its own built-in C# compiler. There is **no `.csproj` file**.
-You place `.cs` files in the appropriate subfolder under
-`Documents\NinjaTrader 8\bin\Custom\` and NinjaTrader compiles **all**
-NinjaScript files into a single `Custom.dll` assembly. Key points:
-
-- Indicators go in `bin\Custom\Indicators\`
-- Strategies go in `bin\Custom\Strategies\`
-- NinjaTrader compiles ALL `.cs` files, not just the one you're editing
-- Compile errors from other files will appear alongside yours
-- No external build tool or project file is needed
-
-## Creating the Indicator
-
-### Class Structure
-
-A NinjaTrader 8 indicator inherits from `Indicator` and implements:
-
-- **`OnStateChange()`** — Called during lifecycle transitions (SetDefaults,
-  Configure, DataLoaded). Set the indicator name, default period, and plot
-  appearance in `SetDefaults`. Pre-compute derived values (halfPeriod,
-  sqrtPeriod) in `DataLoaded`.
-- **`OnBarUpdate()`** — Called on each bar. This is where the four-step HMA
-  algorithm runs.
-
-### Key Implementation Details
-
-- **Namespace**: `NinjaTrader.NinjaScript.Indicators`
-- **Class name**: `HullMA`
-- **Period property**: Expose as `[NinjaScriptProperty]` with `[Range(1, int.MaxValue)]`.
-- **Plot**: Add a single overlay plot (`IsOverlay = true`) in SetDefaults.
-- **Ring buffer**: Use a `double[]` of length `sqrt(period)` to hold the delta
-  series. Shift right on each bar, insert new delta at index 0.
-- **WMA helper**: `weight = len - i` where `i = 0` is the newest bar. Sum
-  `Input[i] * weight`, divide by total weight.
-- **Warmup**: Skip the HMA calculation until `CurrentBar >= Period`. Output
-  `Input[0]` (raw price) during warmup.
-
-### Installing
+### Step 1: Create the NinjaTrader Indicator
 
 Place `HullMA.cs` in:
 ```
-%USERPROFILE%\Documents\NinjaTrader 8\bin\Custom\Indicators\HullMA.cs
+bin\Custom\Indicators\HullMA.cs
 ```
 
-Then compile inside NinjaTrader:
-1. Open NinjaTrader 8.
-2. Go to **Tools &rarr; Edit NinjaScript &rarr; Indicators**.
-3. Press **F5** to compile (or right-click &rarr; Compile).
-4. Add to a chart: right-click chart &rarr; **Indicators** &rarr; **HullMA** &rarr;
-   **Add** &rarr; set **Period** &rarr; **OK**.
+Use the NinjaScript wizard-style template. Match the conventions of the
+existing `@`-prefixed indicators in that directory.
 
-## Debugging with mcp-debugger
+### Step 2: Create a Standalone Console App for Debugging
 
-Because NinjaTrader compiles indicators into `Custom.dll` inside its own
-runtime, you cannot attach a standalone debugger to the indicator directly.
-The recommended approach is to create a standalone .NET 8 console app
-(`HullMAConsole.cs`) that extracts the same algorithm into plain C# with
-sample price data. This console app can then be debugged with mcp-debugger.
+Create `HullMAConsole.cs` in the `claude\` working directory. This extracts
+the same HMA algorithm into plain C# with sample price data so it can be
+debugged outside of NinjaTrader. **No `.csproj` is needed for the NinjaTrader
+indicator**, but the console app does need a simple `.csproj` targeting
+`net8.0` with `DebugType` set to `portable`.
 
-[mcp-debugger](https://github.com/debugmcp/mcp-debugger) is an MCP server
-that gives AI agents (like Claude) step-through debugging via the Debug
-Adapter Protocol. It supports Python, JavaScript, Rust, Go, and **.NET/C#**.
-
-### Division of Labor
-
-This example uses a **two-agent workflow**:
-
-1. **NinjaTrader agent** — Starts in `%USERPROFILE%\Documents\NinjaTrader 8`.
-   Has access to `nt8-docs/` (scraped NinjaTrader documentation) and the full
-   NT8 directory tree.
-   - Places `HullMA.cs` in `bin\Custom\Indicators\`
-   - Creates `HullMAConsole.cs` (standalone debuggable app) in the `claude\`
-     working directory
-   - Calls the mcp-debugger MCP tools to set breakpoints, step through, and
-     inspect variables
-   - Stores notes, metadata, and working files in `claude\`
-   - If a bug is found in the debugger, writes the issue to
-     `claude\mcp-debugger-issues.md`
-
-2. **MCP debugger agent** — Starts in the mcp-debugger repo. Maintains the
-   debugger server and its .NET adapter. Does NOT create indicator source
-   files. Checks for `bug.md` from the NinjaTrader agent and fixes debugger
-   bugs. Checks `%USERPROFILE%\Documents\NinjaTrader 8\claude\mcp-debugger-issues.md`
-   for reported problems.
-
-### Suggested Breakpoint Lines
-
-When creating `HullMAConsole.cs`, mark these as good breakpoint candidates:
-
+Mark good breakpoint candidates with comments:
 - The line calling `CalculateWMA` for the half-period (inspect `wmaHalf`)
 - The delta calculation: `2 * wmaHalf - wmaFull` (inspect all three values)
 - The final HMA from `CalculateWMAFromBuffer` (inspect `hma`)
 
-### What to Verify
+### Step 3: Build and Run the Console App
 
-- **Variable values**: At the delta line, confirm `delta == 2*wmaHalf - wmaFull`.
-- **Buffer state**: After `ShiftBuffer`, inspect the delta ring buffer.
-- **Edge cases**: First bars after warmup will have a mostly-zero delta buffer,
-  producing dampened HMA values. This is expected.
+```bash
+cd claude
+dotnet build -c Debug
+dotnet run -c Debug
+```
+
+Verify the output looks correct.
+
+### Step 4: Debug with mcp-debugger (Interactive)
+
+**Do NOT start debugging autonomously.** When the indicator and console app
+are ready, tell the human. The human will then interactively direct you to:
+- Add breakpoints at specific lines
+- Step through the code
+- Inspect variables
+- Verify correctness
+
+This interactive testing is the whole point — it validates that the
+mcp-debugger .NET adapter works correctly in a real-world scenario.
+
+### If You Find a Debugger Bug
+
+If the mcp-debugger tools fail or behave incorrectly, write the issue to:
+```
+claude\mcp-debugger-issues.md
+```
+
+Include: what tool was called, what arguments were passed, what happened,
+and what you expected. The MCP debugger agent (a separate Claude instance
+working in the mcp-debugger repo) will read this file and fix the issue.
+
+## Directory Layout
+
+```
+C:\Users\Bob\Documents\NinjaTrader 8\
+├── bin\Custom\Indicators\
+│   ├── @SMA.cs, @EMA.cs, ...    ← built-in indicators (review these)
+│   └── HullMA.cs                 ← your indicator goes here
+├── claude\                        ← your working directory
+│   ├── HullMA-Guide.md           ← this file
+│   ├── HullMAConsole.cs          ← standalone debuggable app
+│   ├── HullMAConsole.csproj      ← project file for console app
+│   ├── mcp-debugger-issues.md    ← write debugger bugs here
+│   └── dotnet-debug-adapter-spec.md ← existing reference doc
+└── nt8-docs\text\                 ← scraped NinjaTrader documentation
+    ├── indicator.txt
+    ├── developing_indicators.txt
+    ├── ninjascript_wizard.txt
+    └── ... (hundreds of reference files)
+```
 
 ## Algorithm Notes
 
