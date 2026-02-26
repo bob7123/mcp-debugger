@@ -93,7 +93,7 @@ existing `@`-prefixed indicators in that directory.
 
 ### Step 2: Create a Standalone Console App for Debugging
 
-Create `HullMAConsole.cs` in the `claude\` working directory. This extracts
+Create `HullMAConsole.cs` in the `.claude\` working directory. This extracts
 the same HMA algorithm into plain C# with sample price data so it can be
 debugged outside of NinjaTrader. **No `.csproj` is needed for the NinjaTrader
 indicator**, but the console app does need a simple `.csproj` targeting
@@ -107,7 +107,7 @@ Mark good breakpoint candidates with comments:
 ### Step 3: Build and Run the Console App
 
 ```bash
-cd claude
+cd .claude
 dotnet build -c Debug
 dotnet run -c Debug
 ```
@@ -130,7 +130,7 @@ mcp-debugger .NET adapter works correctly in a real-world scenario.
 
 If the mcp-debugger tools fail or behave incorrectly, write the issue to:
 ```
-claude\mcp-debugger-issues.md
+.claude\mcp-debugger-issues.md
 ```
 
 Include: what tool was called, what arguments were passed, what happened,
@@ -144,7 +144,7 @@ C:\Users\Bob\Documents\NinjaTrader 8\
 ├── bin\Custom\Indicators\
 │   ├── @SMA.cs, @EMA.cs, ...    ← built-in indicators (review these)
 │   └── HullMA.cs                 ← your indicator goes here
-├── claude\                        ← your working directory
+├── .claude\                        ← your working directory
 │   ├── HullMA-Guide.md           ← this file
 │   ├── HullMAConsole.cs          ← standalone debuggable app
 │   ├── HullMAConsole.csproj      ← project file for console app
