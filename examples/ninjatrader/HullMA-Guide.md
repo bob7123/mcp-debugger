@@ -62,7 +62,7 @@ A NinjaTrader 8 indicator inherits from `Indicator` and implements:
 
 Place `HullMA.cs` in:
 ```
-C:\Users\Bob\Documents\NinjaTrader 8\bin\Custom\Indicators\HullMA.cs
+%USERPROFILE%\Documents\NinjaTrader 8\bin\Custom\Indicators\HullMA.cs
 ```
 
 Then compile inside NinjaTrader:
@@ -88,7 +88,7 @@ Adapter Protocol. It supports Python, JavaScript, Rust, Go, and **.NET/C#**.
 
 This example uses a **two-agent workflow**:
 
-1. **NinjaTrader agent** — Starts in `C:\Users\Bob\Documents\NinjaTrader 8`.
+1. **NinjaTrader agent** — Starts in `%USERPROFILE%\Documents\NinjaTrader 8`.
    Has access to `nt8-docs/` (scraped NinjaTrader documentation) and the full
    NT8 directory tree.
    - Places `HullMA.cs` in `bin\Custom\Indicators\`
@@ -103,7 +103,7 @@ This example uses a **two-agent workflow**:
 2. **MCP debugger agent** — Starts in the mcp-debugger repo. Maintains the
    debugger server and its .NET adapter. Does NOT create indicator source
    files. Checks for `bug.md` from the NinjaTrader agent and fixes debugger
-   bugs. Checks `C:\Users\Bob\Documents\NinjaTrader 8\claude\mcp-debugger-issues.md`
+   bugs. Checks `%USERPROFILE%\Documents\NinjaTrader 8\claude\mcp-debugger-issues.md`
    for reported problems.
 
 ### Suggested Breakpoint Lines
