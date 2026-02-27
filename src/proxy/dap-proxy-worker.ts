@@ -852,9 +852,23 @@ export class DapProxyWorker {
       this.logger?.info('[Worker] Already shutting down or terminated.');
       return;
     }
-    
+
     // Use optional chaining since logger might be null if not initialized
     this.logger?.info('[Worker] Received terminate command.');
+
+    // Auto-detach: send DAP disconnect with terminateDebuggee=false BEFORE shutdown
+    // This prevents killing the debuggee (e.g. NinjaTrader) when close_debug_session
+    // is called without an explicit detach_from_process first.
+    if (this.state === ProxyState.CONNECTED && this.connectionManager && this.dapClient) {
+      this.logger?.info('[Worker] Auto-detaching: sending disconnect with terminateDebuggee=false before shutdown.');
+      try {
+        await this.connectionManager.disconnect(this.dapClient, false);
+      } catch (e) {
+        this.logger?.warn('[Worker] Auto-detach disconnect failed (best effort):', e);
+      }
+      this.dapClient = null;
+    }
+
     await this.shutdown();
     this.sendStatus('terminated');
   }
@@ -879,9 +893,9 @@ export class DapProxyWorker {
       this.dapClient.shutdown('worker shutdown');
     }
 
-    // Disconnect DAP client
+    // Disconnect DAP client (terminateDebuggee=false as safe default)
     if (this.connectionManager && this.dapClient) {
-      await this.connectionManager.disconnect(this.dapClient);
+      await this.connectionManager.disconnect(this.dapClient, false);
     }
     this.dapClient = null;
 
