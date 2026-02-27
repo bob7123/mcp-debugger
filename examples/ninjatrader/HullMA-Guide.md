@@ -9,12 +9,7 @@ mcp-debugger to verify the debugger works correctly with .NET/C#.
 
 ## mcp-debugger (Local Installation)
 
-mcp-debugger is installed locally at:
-```
-C:\Users\Bob\Documents\GitHub\mcp-debugger
-```
-
-It is an MCP server that gives AI agents step-through debugging via the Debug
+mcp-debugger is the parent repository containing this file. It is an MCP server that gives AI agents step-through debugging via the Debug
 Adapter Protocol. This local copy has been customized with a **.NET/C# debug
 adapter** (`packages/adapter-dotnet/`) that uses vsdbg and a custom
 vsdbg-bridge for TCP-to-stdio translation. It supports Python, JavaScript,
@@ -140,7 +135,7 @@ working in the mcp-debugger repo) will read this file and fix the issue.
 ## Directory Layout
 
 ```
-C:\Users\Bob\Documents\NinjaTrader 8\
+<NinjaTrader 8 root>\
 ├── bin\Custom\Indicators\
 │   ├── @SMA.cs, @EMA.cs, ...    ← built-in indicators (review these)
 │   └── HullMA.cs                 ← your indicator goes here
