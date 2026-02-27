@@ -832,8 +832,8 @@ describe('DapProxyWorker', () => {
 
       await worker.handleTerminate();
 
-      expect(connectionStub.disconnect).toHaveBeenCalledWith(mockDapClient);
-      expect(mockDapClient.shutdown).toHaveBeenCalledWith('worker shutdown');
+      // Auto-detach: disconnect called with terminateDebuggee=false before shutdown
+      expect(connectionStub.disconnect).toHaveBeenCalledWith(mockDapClient, false);
       expect(worker.getState()).toBe(ProxyState.TERMINATED);
     });
   });
