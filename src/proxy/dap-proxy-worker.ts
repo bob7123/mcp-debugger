@@ -59,6 +59,7 @@ export class DapProxyWorker {
   private currentSessionId: string | null = null;
   private currentInitPayload: ProxyInitPayload | null = null;
   private state: ProxyState = ProxyState.UNINITIALIZED;
+  private isAttachMode: boolean = false;
   private initializedEventPending: boolean = false;
   private deferInitializedHandling: boolean = false;
   private initializedEventPromise: Promise<void> | null = null;
@@ -372,6 +373,7 @@ export class DapProxyWorker {
         // Detect attach mode from launchConfig - needed to determine DAP sequence
         const isAttachMode = payload.launchConfig?.request === 'attach' ||
                              payload.launchConfig?.__attachMode === true;
+        this.isAttachMode = isAttachMode;
         const initBehavior = this.adapterPolicy.getInitializationBehavior();
 
         // For adapters that send 'initialized' before launch/attach (Go/Delve, Java),
@@ -856,11 +858,13 @@ export class DapProxyWorker {
     // Use optional chaining since logger might be null if not initialized
     this.logger?.info('[Worker] Received terminate command.');
 
-    // Auto-detach: send DAP disconnect with terminateDebuggee=false BEFORE shutdown
-    // This prevents killing the debuggee (e.g. NinjaTrader) when close_debug_session
-    // is called without an explicit detach_from_process first.
-    if (this.state === ProxyState.CONNECTED && this.connectionManager && this.dapClient) {
-      this.logger?.info('[Worker] Auto-detaching: sending disconnect with terminateDebuggee=false before shutdown.');
+    // Auto-detach for attach mode: send DAP disconnect with terminateDebuggee=false
+    // BEFORE shutdown. This prevents killing the debuggee (e.g. NinjaTrader) when
+    // close_debug_session is called without an explicit detach_from_process first.
+    // For launch mode, we let shutdown() handle it with terminateDebuggee=true so
+    // the launched process is properly cleaned up.
+    if (this.isAttachMode && this.state === ProxyState.CONNECTED && this.connectionManager && this.dapClient) {
+      this.logger?.info('[Worker] Attach mode: auto-detaching with terminateDebuggee=false before shutdown.');
       try {
         await this.connectionManager.disconnect(this.dapClient, false);
       } catch (e) {
@@ -893,9 +897,10 @@ export class DapProxyWorker {
       this.dapClient.shutdown('worker shutdown');
     }
 
-    // Disconnect DAP client (terminateDebuggee=false as safe default)
+    // Disconnect DAP client — for attach mode, dapClient is already null
+    // (handled by auto-detach in handleTerminate). For launch mode, terminate the debuggee.
     if (this.connectionManager && this.dapClient) {
-      await this.connectionManager.disconnect(this.dapClient, false);
+      await this.connectionManager.disconnect(this.dapClient);
     }
     this.dapClient = null;
 
